@@ -5,4 +5,8 @@ data/
 __pycache__/
 .venv/
 .venv-1/
+node_modules/
+.next/
+dist/
+build/
 
