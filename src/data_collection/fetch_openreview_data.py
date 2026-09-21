@@ -35,6 +35,7 @@ VENUE_IDS = {
     ("ICLR", 2025): "ICLR.cc/2025/Conference",
     ("NeurIPS", 2023): "NeurIPS.cc/2023/Conference",
     ("NeurIPS", 2024): "NeurIPS.cc/2024/Conference",
+    ("ICML", 2026): "ICML.cc/2026/Conference",
     ("ICML", 2025): "ICML.cc/2025/Conference",
     ("ICML", 2024): "ICML.cc/2024/Conference",
     ("ICML", 2023): "ICML.cc/2023/Conference",

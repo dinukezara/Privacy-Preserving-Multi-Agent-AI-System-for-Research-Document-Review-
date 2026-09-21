@@ -34,8 +34,8 @@ from typing import Optional
 
 from pydantic import ValidationError
 
-from schema import Critique
-from llm_client import LocalLLMClient, LLMClientError
+from .schema import Critique
+from .llm_client import LocalLLMClient, LLMClientError
 
 
 @dataclass

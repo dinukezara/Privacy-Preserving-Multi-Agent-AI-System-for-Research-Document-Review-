@@ -1,26 +1,3 @@
-"""
-scripts/test_technical_rigor_standalone.py
-
-Standalone test harness for the Technical Rigor Assessor agent --
-run this BEFORE wiring the agent into the LangGraph graph, per the
-build order in Agent_Development_Division.md:
-
-    "Each person builds and tests their agent(s) standalone first --
-    feed it a parsed sample paper directly, confirm it reliably
-    returns a valid Critique object, before wiring it into the graph."
-
-Usage:
-    # No local LLM required -- validates the plumbing only:
-    python test_technical_rigor_standalone.py --mock
-
-    # Against a real local Ollama model (must be running + pulled):
-    python test_technical_rigor_standalone.py --backend ollama --model llama3:8b-instruct
-
-    # Against a custom parsed paper (same shape as parse_pdfs_pymupdf.py output,
-    # plus paper_id/tier/document_type -- see sample_data/sample_parsed_paper.json):
-    python test_technical_rigor_standalone.py --input path/to/parsed_paper.json --tier "A*"
-"""
-
 import argparse
 import json
 import sys
@@ -34,7 +11,13 @@ sys.path.insert(0, str(AGENTS_DIR))
 from base import DocumentInput  # noqa: E402
 from llm_client import LocalLLMClient, LLMClientError  # noqa: E402
 from technical_rigor_agent import TechnicalRigorAgent  # noqa: E402
+from ethics_compliance_agent import EthicsComplianceAgent  # noqa: E402
 from adapters import document_from_parsed_record  # noqa: E402
+
+AGENT_REGISTRY = {
+    "technical_rigor": TechnicalRigorAgent,
+    "ethics_compliance": EthicsComplianceAgent,
+}
 
 
 DEFAULT_SAMPLE = Path(__file__).resolve().parent.parent / "sample_data" / "sample_parsed_paper.json"
@@ -91,6 +74,10 @@ def load_document_from_jsonl(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--agent", default="technical_rigor", choices=list(AGENT_REGISTRY.keys()),
+        help="Which specialist agent to run (default: technical_rigor)",
+    )
+    parser.add_argument(
         "--input", type=Path, default=None,
         help=f"Path to a single parsed paper JSON, DocumentInput-shaped (default: {DEFAULT_SAMPLE.name})",
     )
@@ -126,12 +113,13 @@ def main():
             sys.exit(1)
         document = load_document(input_path, args.tier)
 
-    print(f"Loaded '{document.paper_id}' (tier={document.tier}, "
-          f"{len(document.full_text)} chars) -- running Technical Rigor Assessor "
-          f"[backend={backend}]...\n")
-
     client = LocalLLMClient(backend=backend, host=args.host, model=args.model)
-    agent = TechnicalRigorAgent(llm_client=client)
+    agent_cls = AGENT_REGISTRY[args.agent]
+    agent = agent_cls(llm_client=client)
+
+    print(f"Loaded '{document.paper_id}' (tier={document.tier}, "
+          f"{len(document.full_text)} chars) -- running {agent_cls.__name__} "
+          f"[backend={backend}]...\n")
 
     try:
         critique = agent.analyze(document)

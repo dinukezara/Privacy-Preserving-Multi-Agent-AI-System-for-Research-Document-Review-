@@ -1,28 +1,9 @@
-"""
-src/agents/technical_rigor_agent.py
-
-Technical Rigor Assessor -- covers both SRS 3.1.4 (Methodology Agent)
-and SRS 3.1.5 (Experimental Rigor Agent) as one combined agent, per the
-5-agent split in Agent_Development_Division.md:
-
-    "Technical Rigor Assessor ... parsed paper text goes in, a
-    structured Critique comes out, using rubric-specific prompts."
-
-It evaluates:
-    - Theoretical / mathematical soundness (notation consistency,
-      whether claims are actually justified, proof gaps).
-    - Experimental validity (baselines present and fair, dataset size
-      adequacy, statistical reporting, ablations).
-
-Runs standalone (no orchestrator / LangGraph dependency) so it can be
-built and tested in isolation first, per the recommended build order
-in Agent_Development_Division.md section 3.
-"""
 
 from typing import Optional
 
-from base import AgentBase, DocumentInput
-from rubrics import get_rigor_rubric
+from .document_sections import build_focused_excerpt
+from .base import AgentBase, DocumentInput
+from .rubrics import get_rigor_rubric   # or get_ethics_rubric
 
 # Cap how much raw document text goes into the prompt. A real
 # implementation should chunk long theses chapter-by-chapter (per the
@@ -47,7 +28,7 @@ outside the JSON) with exactly these fields:
 
 
 class TechnicalRigorAgent(AgentBase):
-    agent_name = "technical_rigor"
+    agent_name = "rigor"
 
     def build_system_prompt(self, tier: str) -> str:
         rubric_text = get_rigor_rubric(tier)
@@ -68,7 +49,12 @@ class TechnicalRigorAgent(AgentBase):
         )
 
     def build_user_prompt(self, document: DocumentInput, context: Optional[dict]) -> str:
-        text = document.full_text[:MAX_DOCUMENT_CHARS]
+        text = build_focused_excerpt(
+            document.full_text,
+            priority_categories=["method", "theory", "experiments", "ablation"],
+            max_chars=8000,
+        )
+        
         truncated_note = (
             f"\n\n[NOTE: document truncated to {MAX_DOCUMENT_CHARS} characters for this review pass.]"
             if len(document.full_text) > MAX_DOCUMENT_CHARS
@@ -96,7 +82,7 @@ if __name__ == "__main__":
     # Minimal smoke test -- uses the mock LLM backend so it runs with zero
     # setup. See scripts/test_technical_rigor_standalone.py for a fuller
     # CLI version that accepts a real parsed paper + a live Ollama backend.
-    from llm_client import LocalLLMClient
+    from .llm_client import LocalLLMClient
 
     doc = DocumentInput(
         paper_id="smoke_test_0001",
